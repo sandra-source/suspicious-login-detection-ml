@@ -380,7 +380,7 @@ Essa fundamentação científica foi determinante para as decisões de arquitetu
 ## Sobre
 
 Desenvolvido por **Sandra Carvalho** — Machine Learning Engineer | Researcher | Full Stack Developer  
-[linkedin.com/in/sandracarvalho-3b6797196](https://www.linkedin.com/in/sandracarvalho-3b6797196)
+[linkedin.com/in/sandra-carvalho-3b6797196](https://www.linkedin.com/in/sandra-carvalho-3b6797196)
 
 > *Projeto desenvolvido por iniciativa própria, com embasamento em pesquisas científicas aplicadas.*
 
