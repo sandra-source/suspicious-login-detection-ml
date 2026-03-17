@@ -1,6 +1,6 @@
 # Sistema de Mapeamento de Perfil Comportamental para Detecção de Logins Anômalos
 
-> Pesquisa aplicada em segurança da informação com Machine Learning — iniciativa independente desenvolvida por mim em ambiente corporativo.  
+> Pesquisa aplicada em segurança da informação com Machine Learning — iniciativa independente com embasamento científico.  
 > Artigo técnico em desenvolvimento para submissão ao **MCTI (Ministério da Ciência, Tecnologia e Inovações)**.
 
 ---
@@ -12,6 +12,7 @@ Este projeto implementa um sistema de **detecção de anomalias em eventos de lo
 A abordagem é fundamentada em pesquisas científicas na área de **User and Entity Behavior Analytics (UEBA)** e combina:
 
 - **Machine Learning supervisionado** com LightGBM calibrado isotonicamente
+- **Modelagem probabilística comportamental** sem suavização de Laplace
 - **Janela horária principal por usuário** (*core window*) como feature estrutural
 - **Regras de negócio híbridas** combinando estatística e heurísticas de segurança
 - **Baseline dinâmico de p95** para análise de volume com estado persistido em SQLite
@@ -326,16 +327,53 @@ gunicorn wsgy:app --workers 4 --worker-class gthread --threads 4
 
 ---
 
+## Desafios Tecnológicos e Evolução do Sistema
+
+### Primeira versão: barreiras de escalabilidade
+
+Durante a fase inicial do projeto, o sistema enfrentou limitações críticas de performance que inviabilizaram a implantação em produção:
+
+- **Complexidade algorítmica elevada:** O algoritmo original operava com complexidade $O(n^{\log n})$, resultando em um tempo de treinamento de aproximadamente **40 minutos em ambiente local**.
+- **Estouro de memória em servidor:** Ao tentar a implantação, o modelo apresentou *memory overflow*. Instâncias com 4GB, 8GB e até 16GB de RAM foram testadas sem sucesso — o sistema simplesmente não era viável em produção nessa arquitetura.
+
+Esses gargalos exigiram uma **refatoração profunda**, realizada em duas etapas:
+
+### Etapa 1 — Otimização para tempo constante $O(1)$
+
+A lógica de análise foi redesenhada para que o tempo de inferência **não crescesse com o volume do histórico**. A chave foi a separação entre pré-computação offline (probabilidades, core window, índices DuckDB) e inferência online (consulta instantânea aos artefatos pré-computados).
+
+Com essa mudança, o tempo de análise de um evento de login tornou-se **independente do tamanho do banco de dados** — o mesmo comportamento para 10 mil ou 10 milhões de registros. O tempo de análise estabilizou-se entre **30ms e 50ms** por evento.
+
+### Etapa 2 — Migração para LightGBM
+
+Para atingir a performance necessária em tempo real, o algoritmo de Machine Learning foi migrado para **LightGBM**. O resultado foi uma redução drástica no tempo de inferência:
+
+| Versão | Tempo de inferência por login |
+|---|---|
+| Modelo inicial | ~30–50 segundos |
+| LightGBM (versão final) | **2ms – 4ms** |
+
+Essa evolução representa uma redução de mais de **99,9% no tempo de resposta**, viabilizando o uso em produção em ambientes de alto volume de eventos.
+
+---
+
 ## Contexto de Pesquisa
 
-Este sistema foi desenvolvido com embasamento em revisão de literatura nas seguintes áreas:
+Este sistema foi desenvolvido com embasamento em revisão de literatura técnica e acadêmica nas seguintes áreas:
 
 - **UEBA (User and Entity Behavior Analytics):** modelagem probabilística de comportamento para detecção de anomalias em acessos
 - **Anomaly Detection em Logs de Acesso:** métodos de detecção baseados em desvios do perfil histórico individual
 - **Calibração de Classificadores:** técnicas de calibração isotônica para interpretabilidade de scores de risco em contextos de segurança
 - **Gradient Boosting para dados tabulares:** LightGBM como estado da arte para classificação com features de baixa dimensionalidade e alto desbalanceamento de classes
 
-A iniciativa resultou em um artigo técnico-científico atualmente em desenvolvimento para submissão ao **MCTI**, proposto pelos próprios avaliadores a partir dos resultados e da metodologia aplicada neste projeto.
+### Referências utilizadas no desenvolvimento
+
+A pesquisa bibliográfica foi orientada por estudos sobre o desempenho de algoritmos de classificação em detecção de anomalias em segurança, com foco em:
+
+- **Random Forest para detecção de anomalias em redes:** estudos como *"Performance Analysis of Random Forest Algorithm for Network Anomaly Detection using Feature Selection"* foram referência central para a estratégia de seleção de features (*feature selection*), orientando a decisão de não utilizar a totalidade do dataset no treinamento — priorizando precisão e performance sobre volume de dados.
+- **Hist Gradient Boosting (HGB):** materiais sobre HGB foram consultados durante a fase de avaliação de algoritmos, compondo o embasamento para a escolha final do LightGBM como modelo de produção.
+
+Essa fundamentação científica foi determinante para as decisões de arquitetura do modelo e é parte central do artigo técnico-científico atualmente em desenvolvimento para submissão ao **MCTI**, proposto pelos próprios avaliadores a partir dos resultados e da metodologia aplicada neste projeto.
 
 ---
 
@@ -344,7 +382,7 @@ A iniciativa resultou em um artigo técnico-científico atualmente em desenvolvi
 Desenvolvido por **Sandra Carvalho** — Machine Learning Engineer | Researcher | Full Stack Developer  
 [linkedin.com/in/sandracarvalho-3b6797196](https://www.linkedin.com/in/sandracarvalho-3b6797196)
 
-> *Projeto desenvolvido por iniciativa própria em ambiente corporativo, com embasamento em pesquisas científicas aplicadas.*
+> *Projeto desenvolvido por iniciativa própria, com embasamento em pesquisas científicas aplicadas.*
 
 ---
 
